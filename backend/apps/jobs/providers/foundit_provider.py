@@ -60,6 +60,7 @@ class FounditProvider(BaseJobProvider):
         jobs: list[JobSchema] = []
 
         start = 0
+        # loca=f"{location}" if location else ""
 
         while start < self.MAX_RESULTS:
 
