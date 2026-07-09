@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from apps.jobs.schemas.job_schema import JobSchema
+from datetime import datetime
 
 
 class NormalizationService:
@@ -208,50 +209,112 @@ class NormalizationService:
         job: dict,
     ) -> JobSchema:
 
+        location = ""
+
+        if job.get("locations"):
+
+            location = ", ".join(
+
+                loc.get("city", "")
+
+                for loc in job["locations"]
+
+                if loc.get("city")
+
+            )
+
+        experience = ""
+
+        minimum = (
+            job.get("minimumExperience", {})
+            .get("years")
+        )
+
+        maximum = (
+            job.get("maximumExperience", {})
+            .get("years")
+        )
+
+        if minimum is not None and maximum is not None:
+
+            experience = f"{minimum}-{maximum} Years"
+
+        elif minimum is not None:
+
+            experience = f"{minimum}+ Years"
+
+        salary = ""
+
+        minimum_salary = (
+            job.get("minimumSalary", {})
+            .get("absoluteValue")
+        )
+
+        maximum_salary = (
+            job.get("maximumSalary", {})
+            .get("absoluteValue")
+        )
+
+        if minimum_salary and maximum_salary:
+
+            salary = (
+                f"{minimum_salary:,}"
+                f" - "
+                f"{maximum_salary:,} INR"
+            )
+
         return JobSchema(
 
-            job_title=cls._clean_string(
-                job.get("jobTitle")
+            job_title=job.get(
+                "title",
+                "",
             ),
 
-            company=cls._clean_string(
-                job.get("companyName")
+            company=(
+                job.get("company", {})
+                .get("name", "")
             ),
 
-            location=cls._clean_string(
-                job.get("location")
+            location=location,
+
+            experience=experience,
+
+            employment_type=(
+                job.get(
+                    "employmentTypes",
+                    ["Full Time"],
+                )[0]
+                if job.get("employmentTypes")
+                else ""
             ),
 
-            experience=cls._clean_string(
-                job.get("experience")
+            work_mode=cls.detect_work_mode(
+                job.get(
+                    "description",
+                    "",
+                )
             ),
 
-            employment_type=cls._clean_string(
-                job.get("employmentType")
+            salary=salary,
+
+            description=job.get(
+                "description",
+                "",
             ),
 
-            work_mode=cls._detect_foundit_work_mode(
+            skills=cls.extract_foundit_skills(
                 job
             ),
 
-            salary=cls._clean_string(
-                job.get("salary")
+            posted_date=cls.format_timestamp(
+                job.get(
+                    "postedAt",
+                )
             ),
 
-            description=cls._clean_html(
-                job.get("jobDescription")
-            ),
-
-            skills=cls._to_list(
-                job.get("skills")
-            ),
-
-            posted_date=cls._clean_string(
-                job.get("postedDate")
-            ),
-
-            apply_url=cls._clean_string(
-                job.get("jobDetailUrl")
+            apply_url=(
+                f"https://www.foundit.in"
+                f"{job.get('jdUrl','')}"
             ),
 
             source="Foundit",
@@ -317,6 +380,87 @@ class NormalizationService:
             return "Remote"
 
         if "hybrid" in text:
+            return "Hybrid"
+
+        return "Onsite"
+    
+
+
+    @staticmethod
+    def extract_foundit_skills(
+        job: dict,
+    ) -> list[str]:
+
+        skills = []
+
+        for skill in job.get(
+            "skills",
+            [],
+        ):
+
+            if isinstance(
+                skill,
+                dict,
+            ):
+
+                if skill.get("text"):
+
+                    skills.append(
+                        skill["text"]
+                    )
+
+        for skill in job.get(
+            "itSkills",
+            [],
+        ):
+
+            if isinstance(
+                skill,
+                dict,
+            ):
+
+                if skill.get("text"):
+
+                    skills.append(
+                        skill["text"]
+                    )
+
+        return list(
+            dict.fromkeys(
+                skills
+            )
+        )
+
+
+
+    @staticmethod
+    def format_timestamp(
+        timestamp,
+    ) -> str:
+
+        if not timestamp:
+
+            return ""
+
+        return datetime.fromtimestamp(
+            timestamp / 1000
+        ).strftime("%Y-%m-%d")
+    
+
+
+    @staticmethod
+    def detect_work_mode(
+        description: str,
+    ) -> str:
+
+        text = description.lower()
+
+        if "remote" in text:
+
+            return "Remote"
+
+        if "hybrid" in text:
+
             return "Hybrid"
 
         return "Onsite"
