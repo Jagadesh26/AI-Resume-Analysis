@@ -1,56 +1,60 @@
-import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from __future__ import annotations
 
-from apps.jobs.providers.provider_factory import JobProviderFactory
+import logging
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    as_completed,
+)
+
+from apps.jobs.providers.provider_factory import (
+    JobProviderFactory,
+)
 from apps.jobs.schemas.job_schema import JobSchema
-from apps.jobs.services.ranking_service import RankingService
 from apps.jobs.services.deduplication_service import (
     DeduplicationService,
 )
-
+from apps.jobs.services.ranking_service import (
+    RankingService,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class JobSearchService:
     """
-    Searches jobs from multiple providers,
+    Aggregates jobs from all providers,
     removes duplicates,
     ranks them,
     and returns the best matches.
     """
-
-    DEFAULT_PROVIDERS = (
-        "remoteok",
-        # "adzuna",
-        # "jooble",
-    )
 
     @classmethod
     def search_jobs(
         cls,
         *,
         roles: list[str],
-        preferred_location: str,
-        skills: list[str],
-        experience_level: str,
-        work_modes: list[str],
+        preferred_location: str = "",
+        skills: list[str] | None = None,
+        experience_level: str = "",
+        work_modes: list[str] | None = None,
         limit: int = 20,
     ) -> list[JobSchema]:
 
+        skills = skills or []
+
+        work_modes = work_modes or []
+
+        providers = JobProviderFactory.get_all_providers()
+
         jobs: list[JobSchema] = []
 
+        futures = []
+
         with ThreadPoolExecutor(
-            max_workers=len(cls.DEFAULT_PROVIDERS),
+            max_workers=len(providers),
         ) as executor:
 
-            futures = []
-
-            for provider_name in cls.DEFAULT_PROVIDERS:
-
-                provider = JobProviderFactory.get_provider(
-                    provider_name,
-                )
+            for provider in providers:
 
                 for role in roles:
 
@@ -70,22 +74,27 @@ class JobSearchService:
 
                     )
 
-            for future in as_completed(futures):
+            for future in as_completed(
+                futures
+            ):
 
                 try:
 
-                    provider_jobs = future.result()
-
-                    jobs.extend(provider_jobs)
+                    jobs.extend(
+                        future.result()
+                    )
 
                 except Exception:
 
                     logger.exception(
-                        "Job provider failed."
+                        "Provider search failed."
                     )
 
-        jobs = DeduplicationService.remove_duplicates(
-            jobs
+        jobs = (
+            DeduplicationService
+            .remove_duplicates(
+                jobs
+            )
         )
 
         jobs = RankingService.rank_jobs(

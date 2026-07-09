@@ -14,7 +14,7 @@ class JobSearchSerializer(serializers.Serializer):
             trim_whitespace=True,
         ),
         allow_empty=False,
-        required=True,
+        required=False,
     )
 
     preferred_location = serializers.CharField(

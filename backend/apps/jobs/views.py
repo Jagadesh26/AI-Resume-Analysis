@@ -42,7 +42,7 @@ class JobSearchAPIView(APIView):
         try:
 
             jobs = JobSearchService.search_jobs(
-                roles=data["roles"],
+                roles=data["roles"] if "roles" in data else [],
                 preferred_location=data.get(
                     "preferred_location",
                     "",

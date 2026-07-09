@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 from apps.jobs.schemas.job_schema import JobSchema
@@ -5,14 +7,14 @@ from apps.jobs.schemas.job_schema import JobSchema
 
 class RankingService:
     """
-    Ranks jobs based on resume data.
+    Scores jobs based on candidate preferences.
     """
 
-    SKILL_WEIGHT = 0.50
-    ROLE_WEIGHT = 0.25
-    LOCATION_WEIGHT = 0.15
-    EXPERIENCE_WEIGHT = 0.05
-    WORK_MODE_WEIGHT = 0.05
+    SKILL_WEIGHT = 50
+    ROLE_WEIGHT = 25
+    LOCATION_WEIGHT = 15
+    EXPERIENCE_WEIGHT = 5
+    WORKMODE_WEIGHT = 5
 
     @classmethod
     def rank_jobs(
@@ -26,31 +28,29 @@ class RankingService:
         work_modes: list[str],
     ) -> list[JobSchema]:
 
-        ranked_jobs = []
-
         for job in jobs:
 
-            skill_score = cls._calculate_skill_score(
+            skill_score = cls.skill_score(
                 skills,
                 job.skills,
             )
 
-            role_score = cls._calculate_role_score(
+            role_score = cls.role_score(
                 roles,
                 job.job_title,
             )
 
-            location_score = cls._calculate_location_score(
+            location_score = cls.location_score(
                 location,
                 job.location,
             )
 
-            experience_score = cls._calculate_experience_score(
+            experience_score = cls.experience_score(
                 experience,
                 job.experience,
             )
 
-            work_mode_score = cls._calculate_work_mode_score(
+            workmode_score = cls.workmode_score(
                 work_modes,
                 job.work_mode,
             )
@@ -65,142 +65,217 @@ class RankingService:
 
                 experience_score * cls.EXPERIENCE_WEIGHT +
 
-                work_mode_score * cls.WORK_MODE_WEIGHT
+                workmode_score * cls.WORKMODE_WEIGHT
 
-            )
+            ) / 100
 
             job.match_score = round(
                 final_score,
                 2,
             )
 
-            job.match_reason = cls._build_reason(
+            job.match_reason = cls.build_reason(
+
                 skill_score,
+
                 role_score,
+
                 location_score,
+
+                experience_score,
+
+                workmode_score,
+
             )
 
-            ranked_jobs.append(job)
+        jobs.sort(
 
-        ranked_jobs.sort(
-            key=lambda x: x.match_score,
+            key=lambda job: job.match_score,
+
             reverse=True,
+
         )
 
-        return ranked_jobs
+        return jobs
 
     @staticmethod
-    def _calculate_skill_score(
-        resume_skills: list[str],
-        job_skills: list[str],
+    def skill_score(
+        resume: list[str],
+        job: list[str],
     ) -> float:
 
-        if not job_skills:
+        if not job:
             return 0
 
         resume = {
-            skill.lower()
-            for skill in resume_skills
+
+            s.lower().strip()
+
+            for s in resume
+
         }
 
-        job = {
-            skill.lower()
-            for skill in job_skills
-        }
+        matched = 0
 
-        matched = resume.intersection(job)
+        for skill in job:
 
-        return (
-            len(matched) / len(job)
-        ) * 100
+            skill = skill.lower()
+
+            if any(
+
+                resume_skill in skill
+
+                or skill in resume_skill
+
+                for resume_skill in resume
+
+            ):
+
+                matched += 1
+
+        return (matched / len(job)) * 100
 
     @staticmethod
-    def _calculate_role_score(
+    def role_score(
         roles: list[str],
-        job_title: str,
+        title: str,
     ) -> float:
 
-        job_title = job_title.lower()
+        title = title.lower()
 
         for role in roles:
 
-            if role.lower() in job_title:
+            role = role.lower()
+
+            if role in title:
+
                 return 100
 
         return 0
 
     @staticmethod
-    def _calculate_location_score(
-        preferred_location: str,
-        job_location: str,
+    def location_score(
+        preferred: str,
+        actual: str,
     ) -> float:
 
-        if not preferred_location:
+        if not preferred:
+
             return 100
 
-        if preferred_location.lower() in job_location.lower():
+        preferred = preferred.lower()
+
+        actual = actual.lower()
+
+        if preferred in actual:
+
             return 100
 
-        if "remote" in job_location.lower():
+        if "remote" in actual:
+
             return 90
+
+        if "hybrid" in actual:
+
+            return 70
 
         return 0
 
     @staticmethod
-    def _calculate_experience_score(
+    def experience_score(
         candidate: str,
         job: str,
     ) -> float:
 
         if not candidate:
+
             return 100
 
         if not job:
+
             return 80
 
-        if candidate.lower() == job.lower():
+        candidate_year = RankingService.extract_year(
+            candidate
+        )
+
+        job_year = RankingService.extract_year(
+            job
+        )
+
+        if candidate_year >= job_year:
+
             return 100
 
-        return 70
+        if abs(candidate_year - job_year) <= 1:
+
+            return 80
+
+        return 40
 
     @staticmethod
-    def _calculate_work_mode_score(
-        preferred_modes: list[str],
-        job_mode: str,
+    def extract_year(
+        text: str,
+    ) -> int:
+
+        match = re.search(
+            r"\d+",
+            text,
+        )
+
+        if not match:
+
+            return 0
+
+        return int(match.group())
+
+    @staticmethod
+    def workmode_score(
+        preferred: list[str],
+        actual: str,
     ) -> float:
 
-        if not preferred_modes:
+        if not preferred:
+
             return 100
 
-        for mode in preferred_modes:
+        actual = actual.lower()
 
-            if mode.lower() == job_mode.lower():
+        for mode in preferred:
+
+            if mode.lower() == actual:
+
                 return 100
 
         return 50
 
     @staticmethod
-    def _build_reason(
-        skill_score: float,
-        role_score: float,
-        location_score: float,
+    def build_reason(
+        skill,
+        role,
+        location,
+        experience,
+        workmode,
     ) -> str:
 
         reasons = []
 
-        if skill_score >= 80:
-            reasons.append("Excellent skill match.")
+        if skill >= 80:
+            reasons.append("Excellent skill match")
 
-        elif skill_score >= 50:
-            reasons.append("Good skill match.")
+        elif skill >= 50:
+            reasons.append("Good skill match")
 
-        else:
-            reasons.append("Limited skill match.")
+        if role == 100:
+            reasons.append("Relevant role")
 
-        if role_score == 100:
-            reasons.append("Role matches your profile.")
+        if location >= 90:
+            reasons.append("Preferred location")
 
-        if location_score >= 90:
-            reasons.append("Preferred location matches.")
+        if experience >= 80:
+            reasons.append("Experience aligned")
 
-        return " ".join(reasons)
+        if workmode == 100:
+            reasons.append("Preferred work mode")
+
+        return ", ".join(reasons)
