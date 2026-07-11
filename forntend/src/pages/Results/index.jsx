@@ -127,7 +127,7 @@ const ResultsPage = () => {
                     className="flex items-start gap-2 text-sm text-gray-700"
                   >
                     <svg
-                      className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5"
+                      className="w-5 h-5 text-green-500 shrink-0 mt-0.5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -163,7 +163,7 @@ const ResultsPage = () => {
                     className="flex items-start gap-2 text-sm text-gray-700"
                   >
                     <svg
-                      className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5"
+                      className="w-5 h-5 text-red-500 shrink-0 mt-0.5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -207,6 +207,249 @@ const ResultsPage = () => {
               </div>
             </Card>
           </div>
+
+          {/* --- NEW PREMIUM UX SECTIONS START HERE --- */}
+
+          {/* 1. Role Match & Section Scores Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Role Match Progress Bars */}
+            <Card
+              title="Role Compatibility"
+              className="border-t-4 border-t-blue-500"
+            >
+              <div className="space-y-4">
+                {analysis.role_match.map((match, index) => {
+                  // Safely convert string "85%" or number 85 to a clean number
+                  const percentage = parseInt(
+                    match?.weight?.match?.match_percentage
+                      ?.toString()
+                      .replace("%", ""),
+                  );
+                  return (
+                    <div key={index}>
+                      <div className="flex justify-between text-sm font-medium mb-1">
+                        <span className="text-gray-700">{match.role}</span>
+                        <span className="text-blue-600">{percentage}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-blue-600 h-2.5 rounded-full transition-all duration-1000"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Section Breakdown */}
+            <Card
+              title="Section Breakdown"
+              className="border-t-4 border-t-purple-500"
+            >
+              <div className="space-y-4">
+                {Object.entries(analysis.section_scores).map(
+                  ([section, data]) => (
+                    <div
+                      key={section}
+                      className="border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="capitalize font-semibold text-gray-800">
+                          {section}
+                        </span>
+                        <span className="px-2 py-1 text-xs font-bold rounded bg-gray-100 text-gray-700">
+                          Score: {data.score}/10
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        {data.reason}
+                      </p>
+                    </div>
+                  ),
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* 2. AI Resume Rewrites (The "Aha!" Moment) */}
+          {analysis.resume_rewrites && analysis.resume_rewrites.length > 0 && (
+            <Card
+              title="AI Smart Rewrites"
+              className="bg-gradient-to-br from-indigo-50 to-white border border-indigo-100"
+            >
+              <p className="text-sm text-gray-600 mb-4">
+                We rewrote some of your bullet points to make them sound more
+                impactful to recruiters.
+              </p>
+              <div className="space-y-4">
+                {analysis.resume_rewrites.map((rewrite, index) => (
+                  <div
+                    key={index}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+                  >
+                    <div>
+                      <span className="text-xs font-bold text-red-500 uppercase tracking-wider mb-1 block">
+                        Original (Before)
+                      </span>
+                      <p className="text-sm text-gray-600 line-through decoration-red-300">
+                        {rewrite.before}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1 block">
+                        AI Suggestion (After)
+                      </span>
+                      <p className="text-sm text-gray-800 font-medium">
+                        {rewrite.after}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* 3. Actionable Checklist */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card title="Actionable Recommendations">
+              <ul className="space-y-3">
+                {analysis.recommendations.map((rec, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-3 text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100"
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">
+                      {index + 1}
+                    </span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+
+            <Card title="How to improve your metrics">
+              <ul className="space-y-3">
+                {analysis.achievement_suggestions.map((sugg, index) => (
+                  <li
+                    key={index}
+                    className="flex items-start gap-2 text-sm text-gray-700"
+                  >
+                    <span className="text-yellow-500 text-lg leading-none">
+                      💡
+                    </span>
+                    <span>{sugg}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          </div>
+
+          {/* --- GRAMMAR & FORMATTING SECTION --- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Grammar Card */}
+            <Card
+              title="Grammar & Phrasing"
+              className="border-t-4 border-t-teal-500"
+            >
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
+                <div className="text-4xl font-extrabold text-teal-600">
+                  {analysis.grammar.score}
+                </div>
+                <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">
+                  Score
+                </div>
+              </div>
+
+              {analysis.grammar.issues && analysis.grammar.issues.length > 0 ? (
+                <ul className="space-y-3">
+                  {analysis.grammar.issues.map((issue, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-2 text-sm text-gray-700"
+                    >
+                      <span className="text-teal-500 mt-0.5">✍️</span>
+                      <span>{issue}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-green-600 flex items-center gap-2 font-medium">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                  No grammatical issues detected. Excellent work!
+                </p>
+              )}
+            </Card>
+
+            {/* Formatting Card */}
+            <Card
+              title="Formatting & Structure"
+              className="border-t-4 border-t-orange-500"
+            >
+              <div className="flex items-center gap-4 mb-4 pb-4 border-b border-gray-100">
+                <div className="text-4xl font-extrabold text-orange-500">
+                  {analysis.formatting.score}
+                </div>
+                <div className="text-xs text-gray-500 font-bold uppercase tracking-widest">
+                  Score
+                </div>
+              </div>
+
+              {analysis.formatting.issues &&
+              analysis.formatting.issues.length > 0 ? (
+                <ul className="space-y-3">
+                  {analysis.formatting.issues.map((issue, idx) => (
+                    <li
+                      key={idx}
+                      className="flex items-start gap-2 text-sm text-gray-700"
+                    >
+                      <span className="text-orange-500 mt-0.5">📄</span>
+                      <span
+                        dangerouslySetInnerHTML={{
+                          __html: issue.replace(
+                            /(Critical Issue:)/g,
+                            '<strong class="text-red-500">$1</strong>',
+                          ),
+                        }}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-green-600 flex items-center gap-2 font-medium">
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    ></path>
+                  </svg>
+                  Formatting is clean and ATS-friendly!
+                </p>
+              )}
+            </Card>
+          </div>
+
+          {/* --- NEW PREMIUM UX SECTIONS END HERE --- */}
 
           {/* Step 5 Placeholder: We will add Jobs here next */}
           <div id="jobs-section" className="mt-12">

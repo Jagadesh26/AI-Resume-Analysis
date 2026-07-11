@@ -102,7 +102,7 @@ const JobSearchModal = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
           <form
             onSubmit={handleSearch}
             className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100"
@@ -190,7 +190,7 @@ const JobSearchModal = ({ isOpen, onClose }) => {
                   Search Results ({jobs.length})
                 </h3>
                 {jobs.length > 0 ? (
-                  <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
+                  <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2 scrollbar-hide">
                     {jobs.map((job, index) => (
                       <JobCard key={index} job={job} />
                     ))}
