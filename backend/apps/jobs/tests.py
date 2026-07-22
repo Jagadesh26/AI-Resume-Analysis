@@ -6,6 +6,7 @@ from rest_framework.test import APIRequestFactory
 from apps.jobs.providers.remoteok_provider import RemoteOKProvider
 from apps.jobs.schemas.job_schema import JobSchema
 from apps.jobs.services.normalization_service import NormalizationService
+from apps.jobs.tasks import collect_jobs_task
 from apps.jobs.views import JobSearchAPIView
 
 
@@ -59,6 +60,14 @@ class NormalizationServiceTests(SimpleTestCase):
         )
 
         self.assertEqual(job.apply_url, "https://remoteok.com/apply")
+
+
+class CeleryTaskRegistrationTests(SimpleTestCase):
+    def test_collect_jobs_task_is_registered(self):
+        self.assertEqual(
+            collect_jobs_task.name,
+            "apps.scheduler.tasks.collect_jobs_task",
+        )
 
 
 class JobSearchAPIViewTests(SimpleTestCase):

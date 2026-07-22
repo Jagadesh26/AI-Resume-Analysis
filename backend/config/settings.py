@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 
 from pathlib import Path
+import dj_database_url
 from dotenv import load_dotenv
 import os
 
@@ -37,6 +38,7 @@ DEBUG = os.getenv("DEBUG") == "True"
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 
+AUTH_USER_MODEL = "authentication.User"
 
 # Application definition
 
@@ -50,13 +52,18 @@ INSTALLED_APPS = [
 
     # Third Party
     "rest_framework",
+    "rest_framework.authtoken",
     "corsheaders",
+    "channels",
+    "drf_spectacular",
 
     # Local Apps
     "apps.resumes",
     "apps.ai",
     "apps.jobs",
     "apps.common",
+    "apps.authentication",
+    "apps.interview",
 ]
 
 MIDDLEWARE = [
@@ -80,6 +87,9 @@ CORS_ALLOWED_ORIGINS = env_list(
 
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+ASGI_APPLICATION = "config.asgi.application"
+
+
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 DATA_UPLOAD_MAX_MEMORY_SIZE = 6 * 1024 * 1024
 
@@ -89,10 +99,32 @@ MEDIA_ROOT = BASE_DIR / "media"
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+
+    "UPDATE_LAST_LOGIN": True,
+
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+
+    "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
-    ]
+    ],
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "apps.authentication.authentication.BearerTokenAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
+    ],
 }
 
 ROOT_URLCONF = 'config.urls'
@@ -118,12 +150,28 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DATABASE_URL = os.getenv("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+DATABASE_SSL_REQUIRE = os.getenv(
+    "DATABASE_SSL_REQUIRE",
+    default="true" if DATABASE_URL.startswith(("postgres://", "postgresql://")) else "false",
+).lower() in {"1", "true", "yes", "on"}
+DATABASE_CONN_MAX_AGE = int(os.getenv("DATABASE_CONN_MAX_AGE", "600"))
+
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    "default": dj_database_url.parse(
+        DATABASE_URL,
+        conn_max_age=DATABASE_CONN_MAX_AGE,
+        conn_health_checks=True,
+        ssl_require=DATABASE_SSL_REQUIRE,
+    )
 }
+
+if DATABASES["default"]["ENGINE"] == "django.db.backends.postgresql":
+    DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = os.getenv(
+        "DATABASE_DISABLE_SERVER_SIDE_CURSORS",
+        default="true",
+    ).lower() in {"1", "true", "yes", "on"}
+
 
 
 # Password validation
@@ -162,3 +210,22 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+
+CELERY_BROKER_URL= os.getenv("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
+CELERY_IMPORTS = (
+    "apps.jobs.tasks",
+)
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [
+                (CELERY_BROKER_URL),
+            ],
+        },
+    },
+}

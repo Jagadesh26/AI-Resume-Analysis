@@ -14,6 +14,8 @@ class ResumeAnalyzeSerializer(serializers.Serializer):
         ("openrouter", "OpenRouter"),
         ("openai", "OpenAI"),
         ("claude", "Claude"),
+        ("gpt-oss", "GPT-OSS"),
+        ("qwen", "Qwen"),
     )
 
     resume = serializers.FileField(

@@ -1,0 +1,16 @@
+# apps/interview/constants.py
+
+MAX_RESUME_SIZE_MB = 5
+
+SUPPORTED_RESUME_FORMATS = [
+    ".pdf",
+    ".docx",
+]
+
+DEFAULT_TOTAL_QUESTIONS = 10
+
+DEFAULT_INTERVIEW_DURATION = 30
+
+MAX_ANSWER_LENGTH = 5000
+
+REDIS_SESSION_PREFIX = "interview:session:"
