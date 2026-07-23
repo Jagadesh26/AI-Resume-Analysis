@@ -212,14 +212,22 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+from urllib.parse import urlparse
+import ssl
+import os
 
 REDIS_URL = os.getenv("REDIS_URL")
+
+parsed = urlparse(REDIS_URL)
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [REDIS_URL],
+            "hosts": [{
+                "address": REDIS_URL,
+                "ssl_cert_reqs": ssl.CERT_NONE,
+            }],
         },
     },
 }
