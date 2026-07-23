@@ -12,9 +12,12 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 
 from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+import ssl
+import os
+
 import dj_database_url
 from dotenv import load_dotenv
-import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -212,22 +215,37 @@ USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
-from urllib.parse import urlparse
-import ssl
-import os
-
 REDIS_URL = os.getenv("REDIS_URL")
 
-parsed = urlparse(REDIS_URL)
+if REDIS_URL:
+    parsed_redis_url = urlparse(REDIS_URL)
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
-        "CONFIG": {
-            "hosts": [{
-                "address": REDIS_URL,
-                "ssl_cert_reqs": ssl.CERT_NONE,
-            }],
+    if parsed_redis_url.hostname and parsed_redis_url.hostname.endswith(".upstash.io"):
+        REDIS_URL = urlunparse(parsed_redis_url._replace(scheme="rediss"))
+        parsed_redis_url = urlparse(REDIS_URL)
+
+    redis_host = {
+        "address": REDIS_URL,
+        "socket_connect_timeout": 10,
+        "socket_timeout": 15,
+        "health_check_interval": 30,
+        "retry_on_timeout": True,
+    }
+
+    if parsed_redis_url.scheme == "rediss":
+        redis_host["ssl_cert_reqs"] = ssl.CERT_NONE
+
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {
+                "hosts": [redis_host],
+            },
         },
-    },
-}
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        },
+    }
