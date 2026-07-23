@@ -213,19 +213,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 
-
-CELERY_BROKER_URL= os.getenv("CELERY_BROKER_URL", default="redis://127.0.0.1:6379/0")
-CELERY_IMPORTS = (
-    "apps.jobs.tasks",
-)
+REDIS_URL = os.getenv("REDIS_URL")
 
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [
-                (CELERY_BROKER_URL),
-            ],
+            "hosts": [REDIS_URL],
         },
     },
 }
